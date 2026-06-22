@@ -1,0 +1,34 @@
+# Credentials
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Data files (generated locally, not version controlled)
+data/raw/*.csv
+data/raw/*.json
+data/raw/*.parquet
+
+# GCP service account key (CRITICAL - never expose this)
+*.json
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+
+# Airflow
+airflow/logs/
+airflow/*.db
+airflow/*.cfg
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
