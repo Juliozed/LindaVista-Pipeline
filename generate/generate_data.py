@@ -223,12 +223,147 @@ def generate_clients():
     return df_clients
 
 
+# ---- step 4: special instructions -----------------------------------
+def generate_special_instructions(df_clients):
+
+    categories = {
+        "Access": [
+            "Garage code is 1234",
+            "Key under the front mat",
+            "Ring doorbell twice",
+            "Side gate is always unlocked",
+            "Park in the driveway only",
+        ],
+        "Pets": [
+            "Dog is friendly but keep him in the backyard",
+            "Cat hides under the bed — do not let out",
+            "Two dogs — keep bathroom door closed",
+            "Bird cage in living room — do not open",
+            "Fish tank in bedroom — do not unplug",
+        ],
+        "Elderly": [
+            "Client is elderly — keep remotes on coffee table",
+            "Do not move furniture — client has mobility issues",
+            "Leave walker next to the bed",
+            "Client may be home — knock before entering rooms",
+            "Keep nightlight plugged in at all times",
+        ],
+        "Cleaning": [
+            "Use unscented products only",
+            "Do not use bleach anywhere in the house",
+            "Hardwood floors — no wet mop, dry only",
+            "Granite countertops — use only provided cleaner",
+            "No vacuum on area rugs — hand clean only",
+        ],
+        "Preference": [
+            "Client likes blinds open after cleaning",
+            "Always leave a fresh towel on the bathroom counter",
+            "Stack mail neatly on kitchen counter",
+            "Turn on air freshener after cleaning",
+            "Client prefers team to finish before noon",
+        ],
+    }
+
+    instructions = []
+    inst_id = 1
+
+    for _, client in df_clients.iterrows():
+        # Each client gets 1-3 random instructions
+        num_instructions = random.randint(1, 3)
+        used_categories = random.sample(list(categories.keys()), num_instructions)
+
+        for category in used_categories:
+            instruction = random.choice(categories[category])
+            instructions.append(
+                {
+                    "instruction_id": f"I{inst_id:03d}",
+                    "client_id": client["client_id"],
+                    "category": category,
+                    "instruction": instruction,
+                }
+            )
+            inst_id += 1
+
+    df_instructions = pd.DataFrame(instructions)
+    df_instructions.to_csv(f"{OUTPUT_DIR}/special_instructions.csv", index=False)
+    print(f"✅ Special Instructions: {len(df_instructions)} records saved")
+    return df_instructions
+
+
+# -------step 5: generate bookings -------------------------------------
+
+
+def generate_bookings(df_clients, df_services, df_employees):
+
+    bookings = []
+    booking_num = 1
+
+    for _, client in df_clients.iterrows():
+        # How often does this client book?
+        frequency = random.choice(["weekly", "biweekly"])
+        interval = 7 if frequency == "weekly" else 14
+
+        # When did they start booking?
+        # Must be after their start_date
+        client_start = pd.to_datetime(client["start_date"])
+        pipeline_end = date(2024, 12, 31)
+
+        current_date = client_start.date()
+
+        while current_date <= pipeline_end:
+            # Pick a service — 70% regular, 20% deep, 10% other
+            service = df_services.sample(weights=[70, 20, 5, 5], n=1).iloc[0]
+
+            # Calculate actual charge based on square footage
+            sqft_multiplier = client["square_feet"] / 1500
+            actual_charge = round(
+                service["base_price"] * sqft_multiplier * random.uniform(0.9, 1.2), 2
+            )
+
+            # Assign team — active clients alternate teams
+            team_id = random.choice([1, 2])
+
+            # Actual hours — varies from estimated
+            actual_hours = round(
+                service["duration_hours"] * random.uniform(0.8, 1.3), 1
+            )
+
+            # Payment
+            payment_status = random.choices(
+                ["Paid", "Pending", "Overdue"], weights=[85, 10, 5]
+            )[0]
+
+            payment_method = random.choice(["Cash", "Check", "Zelle", "Venmo"])
+
+            bookings.append(
+                {
+                    "booking_id": f"B{booking_num:04d}",
+                    "client_id": client["client_id"],
+                    "service_id": service["service_id"],
+                    "team_id": team_id,
+                    "booking_date": current_date,
+                    "actual_hours": actual_hours,
+                    "actual_charge": actual_charge,
+                    "payment_status": payment_status,
+                    "payment_method": payment_method,
+                }
+            )
+
+            booking_num += 1
+            current_date += timedelta(days=interval)
+
+    df_bookings = pd.DataFrame(bookings)
+    df_bookings.to_csv(f"{OUTPUT_DIR}/bookings.csv", index=False)
+    print(f"✅ Bookings: {len(df_bookings)} records saved")
+    return df_bookings
+
+
 def main():
     df_employees = generate_employees()
     df_services = generate_services()
     df_clients = generate_clients()
-    generate_special_instructions()
-    generate_bookings()
+    generate_special_instructions(df_clients)
+    generate_bookings(df_clients, df_services, df_employees)
 
 
 if __name__ == "__main__":
